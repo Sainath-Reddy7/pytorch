@@ -4564,6 +4564,17 @@ class ShapeEnv:
         if dest is not None:
             self._unify_unbacked_aliases(new_s, dest)
 
+        # FX graph changes can cause later fake propagation to allocate fresh unbacked
+        # symbols. The old symbol may already resolve to another unbacked symbol
+        # (for example, u6 -> u1 -> u0), so record the terminal to keep binding lookup
+        # consistent with symbolic simplification.
+        terminal = self._find(new_s)
+        if isinstance(terminal, sympy.Symbol) and free_unbacked_symbols(terminal):
+            if orig_s != terminal and self.replacements.get(orig_s) == new_s:
+                self.unbacked_renamings[orig_s] = terminal
+            if new_s != terminal:
+                self.unbacked_renamings[new_s] = terminal
+
     def _unify_unbacked_aliases(self, new_s: sympy.Symbol, dest: sympy.Expr) -> None:
         """Unify unbacked aliases under one terminal, preferring a backed one.
 
